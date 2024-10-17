@@ -1,0 +1,37 @@
+import cp.
+import combi.
+
+
+main =>
+    N = 2*3*5,
+    K = 3,
+    Options = [D : D in 1..N, gcd(N, D) == 1],
+    Target = sum(Options),
+    kFold(N, K, Options, Target // K, Groups),
+
+    foreach (G in Groups)
+        println(G)
+    end.
+
+kFold(N, K, Options, Target, Groups) =>
+    M = Options.len,
+
+    integerPartitionGen(M, K, Sizes),
+
+    Groups = [new_array(S) : S in Sizes],
+    all_different([E : G in Groups, E in G]),
+
+    foreach (G in Groups)
+        G :: Options,
+        increasing_strict(G),
+        Target #= sum(G),
+    end,
+
+    foreach (I in 1..K-1)
+        if Sizes[I] == Sizes[I + 1] then
+            Groups[I, 1] #< Groups[I + 1, 1]
+        end,
+    end,
+
+    solve([split], [Groups]).
+

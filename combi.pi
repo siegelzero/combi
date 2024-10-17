@@ -1,0 +1,744 @@
+module combi.
+
+import cp.
+import test.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Subsets
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Constraint ensuring S is a subset of A.
+subset(A, S), (list(A), var(S)) =>
+    % var(S) means S is not initialized.
+    % This constraint ensures that S is a subset of A (of any size).
+    member(Len, 0..(A.length)),
+    S = new_list(Len),
+    subset(A, S).
+
+subset(A, S), (list(A), nonvar(S)) =>
+    % nonvar(S) means S is already initialized to a fixed size.
+    % This constraint ensures that S is a subset of A (of size length(S))
+    S :: A,
+    all_different(S),
+    increasing_strict(S).
+
+subset(A, S) =>
+    throw $error(list_expected(A), subset/2).
+
+
+% Constraint ensuring S is a subset of A of size K.
+subset(A, K, S), (list(A), int(K), var(S))=>
+    % var(S) means S is not yet initialized.
+    % initialize list S with size K
+    S = new_list(K),
+    subset(A, S).
+
+subset(A, K, S), (list(A), int(K), nonvar(S))=>
+    % nonvar(S) means S is initialized to a fixed size.
+    % Ensure S has the right length before proceeding.
+    if S.length == K then
+        subset(A, S),
+    else
+        throw $error(incompatible_sizes(A, K), subset/3),
+    end.
+
+subset(A, K, S) =>
+    if int(K) then
+        throw $error(list_expected(A), subsets/3),
+    else
+        throw $error(int_expected(K), subsets/3),
+    end.
+
+
+% Solution generator for subsets of A
+subset_gen(A, S) =>
+    subset(A, S), solve([inout], [S]).
+
+% Solution generator for K-element subsets of A.
+subset_gen(A, K, S) =>
+    subset(A, K, S), solve([inout], [S]).
+
+
+% Function returning all subsets of A
+subsets(A) = Subsets =>
+    Subsets = find_all(S, subset_gen(A, S)).
+
+
+% Function returning all K-element subsets of A.
+subsets(A, K) = Subsets =>
+    Subsets = find_all(S, subset_gen(A, K, S)).
+
+
+% Function returning the binomial coefficient N choose K: the number of
+% K-element subsets of an N-element set.
+binomial(N, K) =
+    factorial(N) // (factorial(K)*factorial(N - K)).
+
+
+test_subsets =>
+    println("Testing subsets"),
+    assert_equal(
+        binomial(10, 5),
+        count_all(subset_gen(1..10, new_array(5)))
+    ),
+    assert_equal(
+        binomial(12, 5),
+        count_all(subset_gen(1..12, 5, _))
+    ),
+    assert_equal(
+        2**10,
+        count_all(subset_gen(1..10, _))
+    ),
+    assert_equal(
+        2**6,
+        find_all(S, subset_gen([2, 4, 6, 8, 10, 12], S)).length
+    ),
+    assert_equal(
+        2**11,
+        subsets(1..11).length
+    ),
+    assert_equal(
+        binomial(9, 7),
+        subsets(1..9, 7).length
+    ),
+    assert_equal(
+        subsets(1..2),
+        [[], [1], [2], [1, 2]]
+    ),
+    assert_equal(
+        subsets([3, 5, 7], 2),
+        [[3, 5], [3, 7], [5, 7]],
+    ),
+    assert_equal(
+        subsets([2, 3, 4]),
+        [[], [2], [3], [4], [2, 3], [2, 4], [3, 4], [2, 3, 4]],
+    ),
+    nl.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Compositions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Let a_1, a_2, ..., a_k >= 0 be integers satisfying a_1 + a_2 + ... + a_k = n.
+% Then the sequence (a_1, a_2, ..., a_k) is called a weak composition of
+% n into k parts
+
+% Constraint ensuring S is a weak K-composition of N
+weakComposition(N, K, S), (int(N), int(K), var(S))=>
+    % var(S) means S is not yet initialized.
+    % initialize list S with size K
+    S = new_array(K),
+    S :: 0..N,
+    sum(S) #= N.
+
+weakComposition(N, K, S), (int(N), int(K), nonvar(S)) =>
+    % nonvar(S) means S is initialized to a fixed size.
+    % Ensure S has the right length before proceeding.
+    if S.length == K then
+        weakComposition(N, K, S),
+    else
+        throw $error(incompatible_sizes(K, S), weakComposition/3),
+    end.
+
+weakComposition(N, K, S) =>
+    if int(K) then
+        throw $error(int_expected(N), weakComposition/3),
+    else
+        throw $error(int_expected(K), weakComposition/3),
+    end.
+
+
+% Solution generator for weak K-compositions of N
+weakCompositionGen(N, K, S) =>
+    weakComposition(N, K, S), solve([inout], [S]).
+
+
+% Function returning all subsets of A
+weakComposition(N, K) = Compositions =>
+    Compositions = find_all(S, weakCompositionGen(N, K, S)).
+
+
+% Constraint ensuring S is a composition of N
+composition(N, S), (int(N), var(S))=>
+    % var(S) means S is not yet initialized.
+    % initialize list S with size K
+    member(Len, 1..N),
+    S = new_array(Len),
+    composition(N, S).
+
+composition(N, S), (int(N), nonvar(S))=>
+    % var(S) means S is not yet initialized.
+    % initialize list S with size K
+    S :: 1..N,
+    sum(S) #= N.
+
+composition(N, S) =>
+    throw $error(int_expected(N), composition/2).
+
+
+% Constraint ensuring S is a K-composition of N
+composition(N, K, S), (int(N), int(K), var(S))=>
+    % var(S) means S is not yet initialized.
+    % initialize list S with size K
+    S = new_array(K),
+    S :: 1..N,
+    sum(S) #= N.
+
+composition(N, K, S), (int(N), int(K), nonvar(S)) =>
+    % nonvar(S) means S is initialized to a fixed size.
+    % Ensure S has the right length before proceeding.
+    if S.length == K then
+        composition(N, K, S),
+    else
+        throw $error(incompatible_sizes(K, S), composition/3),
+    end.
+
+composition(N, K, S) =>
+    if int(K) then
+        throw $error(int_expected(N), composition/3),
+    else
+        throw $error(int_expected(K), composition/3),
+    end.
+
+
+% Solution generator for compositions of N
+compositionGen(N, S) =>
+    composition(N, S), solve([inout], [S]).
+
+% Solution generator for K-compositions of N
+compositionGen(N, K, S) =>
+    composition(N, K, S), solve([inout], [S]).
+
+
+% Function returning all compositions of A
+compositions(N) = Compositions =>
+    Compositions = find_all(S, compositionGen(N, S)).
+
+% Function returning all K-compositions of A
+compositions(N, K) = Compositions =>
+    Compositions = find_all(S, compositionGen(N, K, S)).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Multisets
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+multiset(A, K, S), (list(A), int(K), var(S)) =>
+    % var(S) means S is not initialized.
+    % This constraint ensures that S is a subset of A (of any size).
+    S = new_array(K),
+    multiset(A, K, S).
+
+multiset(A, K, S), (list(A), int(K), nonvar(S)) =>
+    % nonvar(S) means S is already initialized to a fixed size.
+    % This constraint ensures that S is a subset of A (of size length(S))
+    S :: A,
+    increasing(S).
+
+multiset(A, K, S), array(A) =>
+    multiset(to_list(A), S).
+
+multiset(A, K, S) =>
+    throw $error(array_or_list_expected(A), multiset/3).
+
+
+multisetGen(A, K, S) =>
+    multiset(A, K, S), solve([S]).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Permutations
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% This constraint ensures that P is a permutation of A.
+permutation(A, P), (list(A), var(P)) =>
+    P = new_list(A.length),
+    permutation(A, P).
+
+permutation(A, P), (list(A), nonvar(P)) =>
+    P :: A,
+    if P.length < A.length then
+        foreach (E in A)
+            count(E, P) #<= count(E, A)
+        end
+    else
+        foreach (E in A)
+            count(E, P) #= count(E, A)
+        end
+    end.
+
+permutation(A, P) =>
+    throw $error(list_expected(A), permutation/2).
+
+
+% Constraint ensuring P is a K-permutation of A.
+permutation(A, K, P), (list(A), int(K), var(P))=>
+    % var(S) means S is not yet initialized.
+    % initialize list S with size K
+    P = new_list(K),
+    permutation(A, P).
+
+permutation(A, K, P), (list(A), int(K), nonvar(P))=>
+    % nonvar(S) means S is initialized to a fixed size.
+    % Ensure S has the right length before proceeding.
+    if P.length == K then
+        permutation(A, P),
+    else
+        throw $error(incompatible_sizes(A, K), permutation/3),
+    end.
+
+permutation(A, K, P) =>
+    if int(K) then
+        throw $error(list_expected(A), permutation/3),
+    else
+        throw $error(int_expected(K), permutation/3),
+    end.
+
+
+% Solution generator for permutations of A.
+permutation_gen(A, P) => permutation(A, P), solve([P]).
+
+
+% Solution generator for K-permutations of A.
+permutation_gen(A, K, P) => permutation(A, K, P), solve([P]).
+
+
+% Function returning a list of all permutations of A.
+permutations(A) = Perms =>
+    Perms = find_all(P, permutation_gen(A, P)).
+
+
+% Function returning a list of all K-permutations of A.
+permutations(A, K) = Perms =>
+    Perms = find_all(P, permutation_gen(A, K, P)).
+
+
+% Function returning the falling factorial N*(N-1)*...*(N - K + 1).
+falling_factorial(N, K) =
+    factorial(N) // factorial(N - K).
+
+
+test_permutations =>
+    println("Testing permutations"),
+    % set permutations
+    assert_equal(
+        permutations([1, 2, 3]),
+        [[1,2,3], [1,3,2], [2,1,3], [2,3,1], [3,1,2], [3,2,1]],
+    ),
+    % multiset permutations
+    assert_equal(
+        permutations([1, 2, 2, 3]),
+        [[1,2,2,3], [1,2,3,2], [1,3,2,2], [2,1,2,3], [2,1,3,2], [2,2,1,3],
+         [2,2,3,1], [2,3,1,2], [2,3,2,1], [3,1,2,2], [3,2,1,2], [3,2,2,1]],
+    ),
+    % K-permutations
+    assert_equal(
+        permutations([1, 2, 3], 1),
+        [[1], [2], [3]],
+    ),
+    assert_equal(
+        permutations([1, 2, 3], 2),
+        [[1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2]],
+    ),
+    assert_equal(
+        permutations([1, 2, 3], 3),
+        permutations([1, 2, 3]),
+    ),
+    assert_equal(
+        factorial(7),
+        count_all(permutation_gen([1, 2, 3, 4, 5, 6, 7], _))
+    ),
+    assert_equal(
+        factorial(3),
+        count_all(permutation_gen([2, 4, 7], _))
+    ),
+    assert_equal(
+        factorial(4),
+        permutations(1..4).length
+    ),
+    assert_equal(
+        factorial(6),
+        permutations([1, 2, 4, 7, 8, 11]).length
+    ),
+    assert_equal(
+        falling_factorial(8, 6),
+        count_all(permutation_gen(1..8, 6, _))
+    ),
+    assert_equal(
+        falling_factorial(10, 4),
+        permutations(1..10, 4).length
+    ),
+    nl.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Set Partitions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Constraint ensuring P is a set partition of A.
+set_partition(A, Parts), (list(A), var(Parts)) =>
+    % Partition integer N to get sizes of sets in partition.
+    integer_partition_gen(A.length, Sizes),
+    set_partition_aux(A, Sizes, Parts).
+
+set_partition(A, Parts) =>
+    throw $error(list_expected(A), set_partition/2).
+
+
+set_partition(A, K, Parts), (list(A), int(K), var(Parts)) =>
+    % Partition integer N into P.length parts
+    integer_partition_gen(A.length, K, Sizes),
+    set_partition_aux(A, Sizes, Parts).
+
+set_partition(A, K, Parts)  =>
+    if (list(A)) then
+        throw $error(int_expected(K), set_partition/3),
+    else
+        throw $error(list_expected(K), set_partition/3),
+    end.
+
+
+set_partition_aux(A, Sizes, Parts), (list(A), var(Parts)) =>
+    Parts = [new_list(S) : S in Sizes],
+    foreach (I in 1..(Sizes.length))
+        % Each part consists of entries from A
+        Parts[I] :: A,
+        % with distinct elements
+        all_different(Parts[I]),
+        % listed in strictly increasing order
+        increasing_strict(Parts[I]),
+    end,
+    % Ensure that parts of the same size are ordered based on their first entry.
+    foreach (I in 1..Sizes.length-1, Sizes[I] == Sizes[I + 1])
+        Parts[I, 1] #< Parts[I + 1, 1],
+    end,
+
+    % Ensure that all entries of A make it into the partition by ensuring that all entries are distinct.
+    all_different([Entry : Part in Parts, Entry in Part]).
+
+
+% Solution generator for set partitions of A
+set_partition_gen(A, P) => set_partition(A, P), solve([P]).
+
+
+% Solution generator for set partitions of A into K blocks.
+set_partition_gen(A, K, P) => set_partition(A, K, P), solve([P]).
+
+
+% Function returning all set partitions of A.
+set_partitions(A) = Partition =>
+    Partition = find_all(P, set_partition_gen(A, P)).
+
+
+% Function returning all set partitions of the list A into K blocks.
+set_partitions(A, K) = Partition =>
+    Partition = find_all(P, set_partition_gen(A, K, P)).
+
+
+% Function returning the Nth Bell number: the number of set partitions of 1..N
+table
+bell_number(0) = 1.
+bell_number(N) =
+    sum([binomial(N - 1, K)*bell_number(K) : K in 0..N-1]).
+
+
+% Stirling number of the second kind, which returns the number of set partitions
+% of 1..N into K blocks.
+stirling2(0, 0) = 1.
+stirling2(N, 1) = 1.
+stirling2(N, N) = 1.
+stirling2(N, K) = S, N < K =>
+    S = 0.
+stirling2(N, K) = S, N > K =>
+    S = sum([(-1)**J * binomial(K, J) * (K - J)**N : J in 0..K]) // factorial(K).
+
+
+test_set_partitions =>
+    println("Testing set partitions"),
+    assert_equal(
+        bell_number(8),
+        4140
+    ),
+    assert_equal(
+        set_partitions(1..5, 3).length,
+        25
+    ),
+    assert_equal(
+        count_all(set_partition_gen(1..5, 3, _)),
+        stirling2(5, 3),
+    ),
+    assert_equal(
+        set_partitions([2, 3, 5, 7]).length,
+        bell_number(4)
+    ),
+    assert_equal(
+        set_partitions(1..7, 4).length,
+        stirling2(7, 4)
+    ),
+    assert_equal(
+        set_partitions([1, 2, 3]),
+        [[[1,2,3]],
+         [[1],[2,3]],
+         [[2],[1,3]],
+         [[3],[1,2]],
+         [[1],[2],[3]]],
+    ),
+    assert_equal(
+        set_partitions([1, 2, 3, 4], 3),
+        [[[1],[2],[3,4]],
+         [[1],[3],[2,4]],
+         [[1],[4],[2,3]],
+         [[2],[3],[1,4]],
+         [[2],[4],[1,3]],
+         [[3],[4],[1,2]]],
+    ),
+    nl.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Integer Partitions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% A sequence of integers a_1, a_2, ..., a_k > 0 with a_1 <= a_2 <= ... <= a_k
+% and a_1 + a_2 + ... + a_k = n is called  a partition of the integer n.
+
+% Constraint ensuring P is an integer partition of N.
+integer_partition(N, P), (int(N), nonvar(P)) =>
+    % terms 1 <= _ <= N
+    P :: 1..N,
+    % Written in increasing order
+    increasing(P),
+    % Having sum = N
+    sum(P) #= N.
+
+integer_partition(N, P), (int(N), var(P)) =>
+    % partition P has between 1 and N terms
+    member(Len, 1..N),
+    P = new_array(Len),
+    integer_partition(N, P).
+
+integer_partition(N, P) =>
+    throw $error(int_expected(N), integer_partition/1).
+
+
+% Constraint ensuring P is an integer partition of N into K parts.
+integer_partition(N, K, P), (int(N), int(K), var(P))=>
+    % var(S) means S is not yet initialized.
+    % initialize list S with size K
+    P = new_array(K),
+    integer_partition(N, P).
+
+integer_partition(N, K, P), (int(N), int(K), nonvar(P))=>
+    % nonvar(S) means S is initialized to a fixed size.
+    % Ensure S has the right length before proceeding.
+    if P.length == K then
+        integer_partition(N, P),
+    else
+        throw $error(incompatible_sizes(K, P), integer_partition/3),
+    end.
+
+integer_partition(N, K, P) =>
+    if int(N) then
+        throw $error(int_expected(K), integer_partition/3),
+    else
+        throw $error(int_expected(N), integer_partition/3),
+    end.
+
+
+% Solution generator for integer partitions of N.
+integer_partition_gen(N, P) =>
+    integer_partition(N, P), solve([inout], [P]).
+
+% Solution generator for integer partitions of N with K terms.
+integer_partition_gen(N, K, P) =>
+    P = new_array(K), integer_partition_gen(N, P).
+
+
+% Function returning a list of all integer partitions of N.
+integer_partitions(N) = Partitions, int(N) =>
+    Partitions = find_all(P, integer_partition_gen(N, P)).
+
+integer_partitions(N) = Partition =>
+    throw $error(int_expected(N), integer_partitions/1).
+
+
+% Function returning a list of all integer partitions of N with K terms.
+integer_partitions(N, K) = Partitions, (int(N), int(K)) =>
+    Partitions = find_all(P, integer_partition_gen(N, K, P)).
+
+integer_partitions(N, K) = Partitions =>
+    if int(K) then
+        throw $error(int_expected(N), integer_partitions/2),
+    else
+        throw $error(int_expected(K), integer_partitions/2),
+    end.
+
+
+% Function returning the number of partitions of N.
+table
+partition_number(0) = 1.
+partition_number(1) = 1.
+partition_number(N) = PN, N < 0 => PN = 0.
+partition_number(N) = PN, N > 0 =>
+    PN = 0,
+    foreach (I in 1..N, break(I*(3*I + 1)//2 > N))
+        PN := PN + (-1)**(I - 1)*partition_number(N - I*(3*I + 1)//2)
+    end,
+    foreach (I in 1..N, break(I*(3*I - 1)//2 > N))
+        PN := PN + (-1)**(I - 1)*partition_number(N - I*(3*I - 1)//2)
+    end.
+
+
+% Function returning the number of partitions of N in to exactly K Parts.
+table
+partition_number(0, 0) = 1.
+partition_number(N, N) = 1.
+partition_number(N, _) = PN, N < 0 => PN = 0.
+partition_number(N, 0) = PN, N > 0 => PN = 0.
+partition_number(N, K) = PN, K > N => PN = 0.
+partition_number(N, K) = PN, K <= N =>
+    PN = partition_number(N - 1, K - 1) + partition_number(N - K, K).
+
+
+test_integer_partitions =>
+    println("Testing integer partitions"),
+    assert_equal(
+        integer_partitions(5).length,
+        partition_number(5)
+    ),
+    assert_equal(
+        integer_partitions(8).length,
+        partition_number(8)
+    ),
+    assert_equal(
+        partition_number(100),
+        190569292
+    ),
+    assert_equal(
+        integer_partitions(4),
+        [{4}, {1, 3}, {2, 2}, {1, 1, 2}, {1, 1, 1, 1}],
+    ),
+    assert_equal(
+        integer_partitions(20, 7).length,
+        partition_number(20, 7)
+    ),
+    assert_equal(
+        integer_partitions(30, 12).length,
+        partition_number(30, 12)
+    ),
+    assert_equal(
+        integer_partitions(10, 5),
+        [{1,1,1,1,6}, {1,1,1,2,5}, {1,1,1,3,4}, {1,1,2,2,4},
+         {1,1,2,3,3}, {1,2,2,2,3}, {2,2,2,2,2}],
+    ),
+    nl.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Derangements
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% This constraint ensures that D is a derangement of A; i.e. a permutation of A
+% such that no element occurs in its original position in A.
+derangement(A, D), nonvar(D) =>
+    if A.length != D.length then
+        throw $error('Incompatible array sizes', derangement),
+    end,
+    permutation(A, D),
+    foreach (I in 1..A.length)
+        D[I] #!= A[I],
+    end.
+
+derangement(A, D), var(D) =>
+    D = new_array(A.length),
+    derangement(A, D).
+
+% Function returning a list of all derangements of A.
+derangements(A) = Derangements => Derangements = find_all(D, derangementGen(A, D)).
+derangementGen(A, D) => derangement(A, D), solve([inout], [D]).
+
+
+nDerangements(0) = 1.
+nDerangements(1) = 0.
+nDerangements(N) = Count, N > 1 =>
+    Count = (N - 1)*(nDerangements(N - 1) + nDerangements(N - 2)).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Catalan numbers
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% The number of northeastern lattice paths on a grid from (0, 0) to (N, N) that
+% never go above the main diagonal.
+% Equal to the number of 2xN grids with distinct elements from 1..2*N such that
+% each row is increasing to the right and each column is increasing downwards.
+
+catalan(N) = binomial(2*N, N) // (N + 1).
+
+catalanGrids(N) =>
+    % 2xN grid
+    Grid = new_array(2, N),
+    % with elements from 1..2*N
+    Grid :: 1..(2*N),
+    % with distinct entries
+    all_different([Grid[1, I] : I in 1..N] ++ [Grid[2, I] : I in 1..N]),
+    % such that each row is increasing left to right
+    increasing_strict(Grid[1]),
+    increasing_strict(Grid[2]),
+    % and each column in increasing downwards
+    foreach (I in 1..N)
+        Grid[1, I] #< Grid[2, I]
+    end,
+    % Find solution.
+    solve([inout], [Grid]).
+
+
+latticePaths(N) = latticePaths(N, 0, 0).
+
+private
+table
+latticePaths(N, N, N) = 1.
+latticePaths(N, X, Y) = C, X < Y =>
+    C = 0.
+
+latticePaths(N, X, Y) = C, (X == Y, X <= N) =>
+    C = latticePaths(N, X + 1, Y).
+
+latticePaths(N, X, Y) = C, (X > Y, X < N) =>
+    C = latticePaths(N, X + 1, Y) + latticePaths(N, X, Y + 1).
+
+latticePaths(N, X, Y) = C, (X > Y, X == N) =>
+    C = latticePaths(N, X, Y + 1).
+
+
+test_catalan =>
+    println("Testing catalan"),
+    assert_equal(catalan(1), count_all(catalanGrids(1))),
+    assert_equal(catalan(5), count_all(catalanGrids(5))),
+    assert_equal(catalan(10), count_all(catalanGrids(10))),
+    nl.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Primes
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Function returning a list of primes <= N.
+sieve(N) = Primes =>
+    Block = new_array(N),
+    sieve(N, 2, Block),
+    Primes = {E: E in 2..N, var(Block[E])}.
+
+private
+sieve(N, P, Block), P*P <= N =>
+    if var(Block[P]) then
+        foreach (MP in P*P..P..N)
+            Block[MP] = 0,
+        end,
+    end,
+    sieve(N, P + 1, Block).
+
+sieve(N, P, Block), P*P > N => true.
+
+
+% Test runner
+test_combi =>
+    test_subsets,
+    test_permutations,
+    test_integer_partitions,
+    test_set_partitions,
+    test_catalan,
+    nl.

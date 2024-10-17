@@ -1,0 +1,35 @@
+import cp.
+
+import combi.
+import test.
+
+% Examples and exercises from Introductory Combinatorics by Brualdi.
+
+example_2_2(Digits) =>
+    % Example from section 2.2 Permutations of Sets
+    % How many seven-digit numbers are there such that the digits are distinct
+    % integers taken from {1, 2, ..., 9} and such that the digits 5 and 6 do
+    % not appear consecutively in either order?
+
+    % Digits is a 7-permutation of 1..9
+    permutation(1..9, 7, Digits),
+
+    % Position[D] gives the position of D in Digits
+    Position = new_array(9),
+    foreach (I in 1..Position.length, J in 1..Digits.length)
+        Position[I] #= J #<=> Digits[J] #= I
+    end,
+
+    % If both 5 and 6 occur in Digits, require that they are >1 space apart.
+    (count(5, Digits) #> 0) #/\ (count(6, Digits) #> 0) #=> abs(Position[5] - Position[6]) #> 1,
+
+    solve([ff], [Digits]).
+
+
+test_brualdi =>
+    println("Testing Brualdi"),
+    assert_equal(
+        count_all(example_2_2(_)),
+        151200,
+    ),
+    nl.

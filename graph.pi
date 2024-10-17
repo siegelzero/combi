@@ -1,0 +1,78 @@
+import combi.
+import cp.
+
+main =>
+    N = 4,
+    G = coprimeGraph(N),
+    H = completeGraph(N),
+
+    Label = new_array(N),
+    Label :: 1..N,
+    all_different(Label),
+
+    foreach (P in find_all(S, pathGen(H, S)))
+        hasCoprime(G, P, Label),
+    end,
+
+    solve([Label]),
+    print(Label).
+
+
+squareGraph() = G =>
+    G = [[0, 1, 1, 0],
+         [1, 0, 0, 1],
+         [1, 0, 0, 1],
+         [0, 1, 1, 0]].
+
+
+completeGraph(N) = G =>
+    G = new_array(N, N),
+    foreach (I in 1..N, J in 1..N)
+        if I == J then
+            G[I, J] = 0
+        else
+            G[I, J] = 1
+        end
+    end.
+
+
+coprimeGraph(N) = G =>
+    G = new_array(N, N),
+    foreach (I in 1..N, J in 1..N)
+        if I == J then
+            G[I, J] = 0
+        else
+            if gcd(I, J) > 1 then
+                G[I, J] = 0
+            else
+                G[I, J] = 1
+            end
+        end
+    end.
+
+
+hasCoprime(G, P, Label) =>
+    N = P.length,
+    Counts = new_array(N, N),
+    foreach (I in 1..N, J in 1..I-1)
+        element(P[I], Label, LI),
+        element(P[J], Label, LJ),
+        matrix_element(G, LI, LJ, Counts[I, J]),
+    end,
+    Sums #= [sum(Row) : Row in Counts],
+    max(Sums) #= 0.
+
+
+pathGen(G, P) =>
+    N = G.length,
+
+    member(K, 1..N),
+    permutation(1..N, K, P),
+    P[1] #< P[K],
+
+    foreach (I in 1..K-1, U in 1..N, V in 1..N, G[U, V] = 0)
+        (P[I] #= U) #=> (P[I + 1] #!= V)
+    end,
+
+    solve([P]).
+

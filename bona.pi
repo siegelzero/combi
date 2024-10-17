@@ -1,0 +1,40 @@
+import cp.
+
+import combi.
+import test.
+
+% Examples and exercises from Introduction to Enumerative Combinatorics by Bona.
+
+example_2_42(N, Perm) =>
+    % Example 2.42
+    % In a small town, N married couples attend a town hall meeting. Each of
+    % these 2N people wants to speak exactly once. In how many ways can we
+    % schedule these 2N participants to speak if no married couple can take two
+    % consecutive slots?
+
+    % Label couples as the pair (1, 2), (3, 4), ..., (2*N-1, 2*N).
+    % We seek permutations of 2N such that 2*I and 2*I - 1 are not adjacent
+    permutation(1..2*N, Perm),
+
+    % Position[I] is the position of I in Perm
+    assignment(Perm, Position),
+
+    % Require each couple is separated
+    foreach (I in 1..N)
+        abs(Position[2*I-1] - Position[2*I]) #> 1
+    end,
+
+    solve([Perm]).
+
+
+example_2_42(N) =
+    sum([(-1)**J * binomial(N, J) * 2**J * factorial(2*N - J) : J in 0..N]).
+
+
+test_bona =>
+    println("Testing Bona"),
+    assert_equal(
+        count_all(example_2_42(4, _)),
+        example_2_42(4)
+    ),
+    nl.

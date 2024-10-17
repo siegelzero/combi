@@ -1,0 +1,144 @@
+import cp.
+
+import combi.
+import test.
+
+
+% Examples and exercises from A Course in Enumeration by Aigner
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Exercise 1.7
+% In how many ways can one list the numbers 1, 2, ..., N such that apart
+% from the leading element, the number K can be placed only if either K - 1
+% or K + 1 already appears.
+% Example: 324516, 435216, but not 351246.
+
+exercise_1_7(N, Perm) =>
+    % Both Perm and Position are permutations of 1..N
+    permutation(1..N, Position),
+    permutation(1..N, Perm),
+
+    % Position[K] is the index of element K in Perm
+    % i.e. Perm[Position[K]] == K
+    foreach (K in 1..N)
+        element(Position[K], Perm, K),
+    end,
+
+    % If 1 is not the first entry, then it can only appear in a position after
+    % the 2 has already been placed.
+    (Position[1] #> 1) #=> (Position[1] #> Position[2]),
+    % Similar for N, it can only appear after the N-1 has been placed.
+    (Position[N] #> 1) #=> (Position[N] #> Position[N - 1]),
+
+    % And in general, K can only appear once K-1 or K+1 has been placed.
+    foreach (K in 2..N-1)
+        (Position[K] #> 1) #=> (Position[K] #> Position[K - 1]) #\/ (Position[K] #> Position[K + 1]),
+    end,
+
+    solve([Perm, Position]).
+
+exercise_1_7(N) =
+    2**(N - 1).
+
+test_1_7 =>
+    assert_equal(
+        count_all(exercise_1_7(2, _)),
+        exercise_1_7(2),
+    ),
+    assert_equal(
+        count_all(exercise_1_7(8, _)),
+        exercise_1_7(8),
+    ),
+    assert_equal(
+        count_all(exercise_1_7(12, _)),
+        exercise_1_7(12),
+    ),
+    nl.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Exercise 1.8
+% Let f(n, k) be the number of k-subsets of {1, 2, ..., n} that do not
+% contain a pair of consecutive integers.
+% Show that f(n, k) = binomial(n - k + 1, k) and further that
+% sum(k = 0, n, f(n, k)) = F(n + 2) (Fibonacci number).
+
+exercise_1_8(N, K, S) =>
+    % S is a K-element subset of 1..N.
+    subset(1..N, K, S),
+
+    % Subsets of S are listed with elements in increasing order.
+    % Add the constraint that consecutive entries in the subset differ by more
+    % than 1 to ensure that no consecutive integers are in the subset.
+    foreach (I in 2..K)
+        S[I] #> S[I - 1] + 1,
+    end,
+
+    solve([S]).
+
+exercise_1_8(N, K) = S, N < 2*K =>
+    S = 0.
+exercise_1_8(N, K) = S, N >= 2*K =>
+    S = binomial(N - K + 1, K).
+
+
+test_1_8 =>
+    assert_equal(
+        count_all(exercise_1_8(16, 9, _)),
+        exercise_1_8(16, 9),
+    ),
+    assert_equal(
+        count_all(exercise_1_8(11, 4, _)),
+        exercise_1_8(11, 4),
+    ),
+    nl.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Exercise 1.21
+% Consider (m + n) words with exactly m 1s and n 0s. Count the number of
+% these words with exactly k runs, where a run is a maximal subsequence of
+% consecutive 1s. Example: 1011100110 has 3 runs. (M = 6, N = 4, K = 3)
+
+exercise_1_21(M, N, K, Runs) =>
+    % Sizes of runs are the compositions of M
+    % M locations split in to K runs
+    compositionGen(M, K, Sizes),
+    Runs = [new_list(S) : S in Sizes],
+
+    % Each run consists of locations in 1..(M + N)
+    Runs :: 1..(M + N),
+
+    % Each Run must consist of consecutive locations
+    foreach (Run in Runs, I in 1..Run.length - 1)
+        Run[I + 1] - Run[I] #= 1,
+    end,
+
+    % Gap between consecutive Runs must be > 1 to ensure separation
+    foreach (I in 1..Runs.length - 1)
+        min(Runs[I + 1]) #> max(Runs[I]) + 1,
+    end,
+
+    solve([Runs]).
+
+exercise_1_21(M, N, K) =
+    binomial(N + 1, K)*binomial(M - 1, K - 1).
+
+test_1_21 =>
+    assert_equal(
+        count_all(exercise_1_21(6, 4, 3, _)),
+        exercise_1_21(6, 4, 3),
+    ),
+    assert_equal(
+        count_all(exercise_1_21(10, 7, 6, _)),
+        exercise_1_21(10, 7, 6),
+    ),
+    nl.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+test_aigner =>
+    println("Testing Aigner"),
+    test_1_7,
+    test_1_8,
+    test_1_21,
+    nl.
