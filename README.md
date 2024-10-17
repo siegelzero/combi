@@ -1,0 +1,2 @@
+# combi
+Combinatorics in Picat
