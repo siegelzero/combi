@@ -1,7 +1,6 @@
 module combi.
 
 import cp.
-import test.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Subsets
@@ -713,32 +712,56 @@ test_catalan =>
     nl.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Primes
+% Products
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Function returning a list of primes <= N.
-sieve(N) = Primes =>
-    Block = new_array(N),
-    sieve(N, 2, Block),
-    Primes = {E: E in 2..N, var(Block[E])}.
+% Function returning the list of all K-term products of elements of A.
+products(A, K) = Product =>
+    Product = find_all(P, product_gen(A, K, P)).
 
-private
-sieve(N, P, Block), P*P <= N =>
-    if var(Block[P]) then
-        foreach (MP in P*P..P..N)
-            Block[MP] = 0,
-        end,
-    end,
-    sieve(N, P + 1, Block).
+% Solution generator for K-term products of elements of A.
+product_gen(A, K, Product), int(K) =>
+    subset_gen(A, K, P),
+    Product = prod(P).
 
-sieve(N, P, Block), P*P > N => true.
+product_gen(A, R, Product), list(R) =>
+    member(K, R),
+    product_gen(A, K, Product).
 
+test_products =>
+    println("Testing products"),
+    % 2-term products
+    assert_equal(
+        products([2, 3, 5], 2),
+        [2*3, 2*5, 3*5],
+    ),
+    % Test empty products
+    assert_equal(
+        products([2, 3, 5], 0),
+        [1],
+    ),
+    assert_equal(
+        products([2, 3, 5], 1..2),
+        [2, 3, 5, 2*3, 2*5, 3*5],
+    ),
+    nl.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Test runner
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+assert_equal(A, B) =>
+    if A == B then
+        println(A == B),
+    else
+        throw $error(test_failed, A != B),
+    end.
+
 test_combi =>
     test_subsets,
     test_permutations,
     test_integer_partitions,
     test_set_partitions,
     test_catalan,
+    test_products,
     nl.

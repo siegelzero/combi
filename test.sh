@@ -2,8 +2,6 @@
 
 echo "Running test suite"
 
-picat -g test_combi combi.pi
-
-picat -g test_aigner aigner.pi
-picat -g test_bona bona.pi
-picat -g test_brualdi brualdi.pi
+for FILE in *.pi; do
+    picat -g test\_${FILE%.*} $FILE || exit 1;
+done

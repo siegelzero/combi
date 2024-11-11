@@ -1,0 +1,231 @@
+module graphs.
+
+import combi.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% This module contains graph construction methods as well as some utilities.
+% Graphs are considered and modeled as simple, undirected graphs.
+% Graphs are represented as adjacency matrices, which are assumed to be symmetric.
+% Graph[I, J] = 1 <=> vertices I and J are adjacent and 0 otherwise.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Graph construction
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+square_graph() = Graph =>
+    % Function returning the square graph
+    % 1 - 2
+    % |   |
+    % 3 - 4
+    Graph = {{0,1,1,0}, {1,0,0,1}, {1,0,0,1}, {0,1,1,0}}.
+
+complete_graph(N) = Graph =>
+    % Function returning the complete graph on N vertices.
+    Graph = new_array(N, N),
+    foreach (I in 1..N, J in 1..N)
+        if I == J then
+            Graph[I, J] = 0
+        else
+            Graph[I, J] = 1
+        end
+    end.
+
+cycle_graph(N) = Graph =>
+    % Function returning the cycle graph on N vertices
+    % 1 - 2 - 3 - ... - N - 1
+    Graph = new_array(N, N),
+    % Each vertex in the cycle is adjacent to the next
+    foreach (I in 1..N-1)
+        Graph[I, I + 1] = 1,
+        Graph[I + 1, I] = 1,
+    end,
+    % And the last vertex is adjacent to the first
+    Graph[1, N] = 1,
+    Graph[N, 1] = 1,
+    % Set all other entries to 0
+    foreach (I in 1..N, J in 1..N, var(Graph[I, J]))
+        Graph[I, J] = 0
+    end.
+
+grid_graph(M, N) = Graph =>
+    % Function returning MxN grid graph.
+    % For M = 2, N = 3, this is the graph
+    % 1 - 2 - 3
+    % |   |   |
+    % 4 - 5 - 6
+    Graph = new_array(M*N, M*N),
+    foreach (I in 1..M*N)
+        % if we're not at the last column
+        if I mod N > 0 then
+            Graph[I, I + 1] := 1,
+            Graph[I + 1, I] := 1,
+        end,
+        % if we're not in the last row
+        if I + N <= M*N then
+            Graph[I + N, I] := 1,
+            Graph[I, I + N] := 1,
+        end,
+    end,
+    % Set all other entries to 0
+    foreach (I in 1..M*N, J in 1..M*N, var(Graph[I, J]))
+        Graph[I, J] := 0
+    end.
+
+path_graph(N) = Graph =>
+    % Function returning the path graph on N vertices.
+    % 1 - 2 - 3 - ... - N
+    Graph = new_array(N, N),
+    % Each vertex in the path is adjacent to the next
+    foreach (I in 1..N-1)
+        Graph[I, I + 1] = 1,
+        Graph[I + 1, I] = 1,
+    end,
+    % Set all other entries to 0
+    foreach (I in 1..N, J in 1..N, var(Graph[I, J]))
+        Graph[I, J] = 0
+    end.
+
+star_graph(N) = Graph =>
+    % Function returning star graph on N vertices 1..N, where all
+    % vertices 2..N are adjacent to the central vertex 1.
+    Graph = new_array(N, N),
+    % Each vertex in the perimeter is adjacent to the center.
+    foreach (I in 2..N)
+        Graph[1, I] = 1,
+        Graph[I, 1] = 1,
+    end,
+    % Set all other entries to 0
+    foreach (I in 1..N, J in 1..N, var(Graph[I, J]))
+        Graph[I, J] = 0
+    end.
+
+wheel_graph(N) = Graph =>
+    Graph = new_array(N, N),
+    % vertices around perimeter adjacent to each other
+    foreach (I in 2..N-1)
+        Graph[I, I + 1] = 1,
+        Graph[I + 1, I] = 1,
+    end,
+    % close the circuit
+    Graph[N, 2] = 1,
+    Graph[2, N] = 1,
+    % Each vertex in the perimeter is adjacent to the center.
+    foreach (I in 2..N)
+        Graph[1, I] = 1,
+        Graph[I, 1] = 1,
+    end,
+    % Set all other entries to 0
+    foreach (I in 1..N, J in 1..N, var(Graph[I, J]))
+        Graph[I, J] = 0
+    end.
+
+coprimeGraph(N) = G =>
+    G = new_array(N, N),
+    foreach (I in 1..N, J in 1..N)
+        if I == J then
+            G[I, J] = 0
+        else
+            if gcd(I, J) > 1 then
+                G[I, J] = 0
+            else
+                G[I, J] = 1
+            end
+        end
+    end.
+
+
+path(Graph, K, Path) =>
+    N = Graph.length,
+    % Model the path as a K-permutation of 1..N
+    permutation(1..N, K, Path),
+    % WLOG first entry of path is less than last.
+    Path[1] #< Path[K],
+    foreach (I in 1..K-1, U in 1..N, V in 1..N, Graph[U, V] = 0)
+        % If Ith vertex in the path is U, rule out any vertex V nonadjacent to U
+        % as the next vertex in the path.
+        (Path[I] #= U) #=> (Path[I + 1] #!= V)
+    end.
+
+path(Graph, Path) =>
+    % Path has length between 1 and N
+    member(K, 1..N),
+    path(Graph, K, Path).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Graph utilities
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+degree(V, Graph) = Degree =>
+    % Returns the degree of V in Graph: the number of vertices adjacent to V.
+    Degree = sum(Graph[V]).
+
+max_degree(Graph) = Degree =>
+    % Returns the maximum degree of Graph
+    Degree = max([sum(Row) : Row in Graph]).
+
+min_degree(Graph) = Degree =>
+    % Returns the minimum degree of Graph
+    Degree = min([sum(Row) : Row in Graph]).
+
+neighbors(V, Graph) = Neighbors =>
+    % Returns a list of the neighbors of V in Graph: the vertices adjacent to V.
+    Neighbors = [U : U in 1..Graph.length, Graph[U, V] == 1].
+
+num_edges(Graph) = NumEdges =>
+    % Returns the number of edges in Graph
+    NumEdges = sum([Graph[I, J] : I in 1..Graph.length, J in 1..I-1]).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Test runner
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+check_matrix(Graph) =>
+    % Simple graph with no loops has all 0s in main diagonal.
+    foreach (I in 1..Graph.length, Graph[I, I] == 1)
+        handle_exception($graph_contains_loop(Graph), check_matrix),
+    end,
+    foreach (I in 1..Graph.length, J in 1..Graph.length)
+        % Simple undirected graph must have symmetric adjacency matrix
+        if Graph[I, J] !== Graph[J, I] then
+            handle_exception($graph_not_symmetric(Graph), check_matrix),
+        end,
+        % All entries in Graph must be either 0 or 1
+        if not (Graph[I, J] == 1; Graph[I, J] == 0) then
+            handle_exception($graph_not_zero_one(Graph), check_matrix),
+        end,
+    end.
+
+test_graphs =>
+    println("Testing Graphs"),
+    % square_graph
+    check_matrix(square_graph()),
+    assert_equal(
+        neighbors(1, square_graph()),
+        [2, 3]
+    ),
+    assert_equal(degree(1, square_graph()), 2),
+    assert_equal(max_degree(square_graph()), 2),
+    assert_equal(min_degree(square_graph()), 2),
+    % complete_graph
+    check_matrix(complete_graph(5)),
+    assert_equal(
+        complete_graph(3),
+        {{0,1,1},{1,0,1},{1,1,0}}
+    ),
+    assert_equal(
+        degree(1, complete_graph(10)),
+        9
+    ),
+    assert_equal(
+        neighbors(1, complete_graph(5)),
+        [2, 3, 4, 5],
+    ),
+    assert_equal(
+        num_edges(complete_graph(7)),
+        7*6//2,
+    ),
+    assert_equal(
+        path_graph(2),
+        complete_graph(2),
+    ),
+    nl.

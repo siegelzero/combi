@@ -1,0 +1,54 @@
+module ntheory.
+
+import combi.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Primes
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Function returning a list of primes <= N.
+sieve(N) = Primes =>
+    Block = new_array(N),
+    sieve(N, 2, Block),
+    Primes = [E: E in 2..N, var(Block[E])].
+
+private
+sieve(N, P, Block), P*P <= N =>
+    if var(Block[P]) then
+        foreach (MP in P*P..P..N)
+            Block[MP] = 0,
+        end,
+    end,
+    sieve(N, P + 1, Block).
+
+sieve(N, P, Block), P*P > N => true.
+
+
+% Function returning the first N primes
+primes_first(N) = Primes, N > 6 =>
+    % Upper bound for the Nth prime for N > 6
+    Bound = ceiling(N*(log(N) + log(log(N)))),
+    AllPrimes = sieve(Bound),
+    Primes = AllPrimes[1..N].
+
+primes_first(N) = Primes, N <= 6 =>
+    SmallPrimes = [2, 3, 5, 7, 11, 13],
+    Primes = SmallPrimes[1..N].
+
+
+% Function returning the Nth primorial p_1*p_2*...*p_N
+primorial(N) = Primorial =>
+    Primorial = prod(primes_first(N)).
+
+
+test_primes =>
+    println("Testing primes"),
+    assert_equal(
+        primes_first(8),
+        [2, 3, 5, 7, 11, 13, 17, 19],
+    ),
+    nl.
+
+
+test_ntheory =>
+    test_primes.

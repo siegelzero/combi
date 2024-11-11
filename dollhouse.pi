@@ -1,0 +1,161 @@
+import sat.
+
+import combi.
+import graphs.
+import ntheory.
+
+main(ARGS) =>
+    N = ARGS[1].to_integer(),
+    %label_cycle_graph(N, Label, Weight),
+    label_grid_graph(N, Label, Weight),
+    %label_path_graph(N, Label, Weight),
+    %label_star_graph(N, Label, Weight),
+    %label_wheel_graph(N, Label, Weight),
+    nl,
+    println("Found"),
+    println(Label),
+    println(Weight).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Cycle graph
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+label_cycle_graph(N, Label, Weight) =>
+    Graph = cycle_graph(N),
+    Label = new_list(N),
+    all_different(Label),
+    Label[1] #= min(Label),
+    induced_labeling(Graph, Label, Weight).
+
+test_cycle_graph =>
+    label_cycle_graph(5, Label, Weight),
+    %assert_equal(Label, [2*7, 5*7, 3*5, 3*11, 2*11]),
+    assert_equal(Label, [2*7, 2*11, 3*11, 3*5, 5*7]),
+    assert_equal(Weight, 119).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Grid graph
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+label_grid_graph(M, N, Label, Weight) =>
+    Graph = grid_graph(M, N),
+    Label = new_list(M*N),
+    Label[1] #< Label[N],
+    Label[1] #< Label[M*N],
+    Label[1] #< Label[M*N - N + 1],
+    all_different(Label),
+    induced_labeling(Graph, Label, Weight).
+
+test_grid_graph =>
+    label_grid_graph(2, 2, Label, Weight),
+    assert_equal(Label, [2*5, 3*5, 2*7, 3*7]),
+    assert_equal(Weight, 60).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Path graph
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+label_path_graph(N, Label, Weight) =>
+    Graph = path_graph(N),
+    Label = new_list(N),
+    all_different(Label),
+    Label[1] #< Label[N],
+    induced_labeling(Graph, Label, Weight).
+
+test_path_graph =>
+    label_path_graph(5, Label, Weight),
+    assert_equal(Label, [5, 3*5, 2*3, 2*7, 7]),
+    assert_equal(Weight, 47).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Star graph
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+label_star_graph(N, Label, Weight) =>
+    Graph = star_graph(N),
+    Label = new_list(N),
+    all_different(Label),
+    foreach (I in 2..N-1)
+        Label[I] #< Label[I + 1],
+    end,
+    induced_labeling(Graph, Label, Weight).
+
+test_star_graph =>
+    label_star_graph(5, Label, Weight),
+    assert_equal(Label, [2*3*5*7, 2, 3, 5, 7]),
+    assert_equal(Weight, 2*3*5*7 + 2 + 3 + 5 + 7).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Wheel graph
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+label_wheel_graph(N, Label, Weight) =>
+    Graph = wheel_graph(N),
+    Label = new_list(N),
+    all_different(Label),
+    induced_labeling(Graph, Label, Weight).
+
+test_wheel_graph =>
+    label_wheel_graph(4, Label, Weight),
+    assert_equal(Label, [2*5, 2*3, 2*7, 2]),
+    assert_equal(Weight, 32).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Labeling
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+common_factor_table(Options) = CommonFactor =>
+    N = Options.length,
+    CommonFactor = new_array(N, N),
+    foreach (I in 1..N, J in 1..N)
+        if gcd(Options[I], Options[J]) > 1 then
+            CommonFactor[I, J] = 1,
+        else
+            CommonFactor[I, J] = 0,
+        end,
+    end.
+
+induced_labeling(Graph, Label, Weight) =>
+    N = Graph.length,
+    % Need as many primes are there are edges in the graph.
+    NumEdges = num_edges(Graph),
+    Primes = primes_first(NumEdges),
+    % Consider products of up to MaxDegree number of distinct primes
+    MaxDegree = max_degree(Graph),
+    Options = products(Primes, 1..MaxDegree),
+    % CommonFactor[I, J] == 1 means gcd(Options[I], Options[J]) > 1
+    CommonFactor = common_factor_table(Options),
+    Index = new_list(N),
+    Index :: 1..Options.length,
+    foreach (I in 1..N)
+        Degree = degree(I, Graph),
+        Label[I] :: products(Primes, 1..Degree),
+    end,
+    foreach (I in 1..N, J in 1..Options.length)
+        (Label[I] #= Options[J]) #<=> (Index[I] #= J)
+    end,
+    % For each edge in the graph, constraint that the labels have a common factor.
+    foreach (I in 1..N, J in 1..I-1)
+       matrix_element(CommonFactor, Index[I], Index[J], Graph[I, J]),
+    end,
+    % Objective function is sum of labels to be minimized.
+    Weight #= sum(Label),
+    % Find minimal weight Label
+    println("Searching"),
+    solve(
+        $[min(Weight), report(println([Weight, Label])), ffc],
+         [Index, Weight, Label],
+    ).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Test runner
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+test_dollhouse =>
+    println("Testing dollhouse"),
+    test_cycle_graph,
+    test_grid_graph,
+    test_path_graph,
+    test_star_graph,
+    test_wheel_graph,
+    nl.
