@@ -1,0 +1,80 @@
+import combi.
+import graphs.
+
+import cp.
+
+main(ARGS) =>
+    M = ARGS[1].to_integer(),
+    N = ARGS[2].to_integer(),
+    Graph = grid_graph(M, N),
+    Count = count_all(hamiltonian_path_gen(Graph, _)),
+    println(Count).
+    %hamiltonian_path_gen(Graph, Path),
+    %println(Path).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Hamiltonian Paths
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Constraint ensuring Path is a Hamiltonian path in the Graph.
+hamiltonian_path(Graph, Path) =>
+    % Model the path as a K-permutation of 1..N
+    N = Graph.length,
+    permutation(1..N, Path),
+    Path[1] #< Path[N],
+    foreach (I in 1..N-1, U in 1..N, V in 1..N, Graph[U, V] = 0)
+        % If Ith vertex in the path is U, rule out any vertex V nonadjacent to U
+        % as the next vertex in the path.
+        (Path[I] #= U) #=> (Path[I + 1] #!= V)
+    end.
+
+% Constraint ensuring Path is a Hamiltonian path in the Graph with given Start
+% and End vertices.
+hamiltonian_path(Graph, Start, End, Path) =>
+    hamiltonian_path(Graph, Path),
+    Path[1] #= Start,
+    Path[Graph.len] #= End.
+
+
+% Solution Generator for Hamiltonian Paths in Graph
+hamiltonian_path_gen(Graph, Path) =>
+    hamiltonian_path(Graph, Path),
+    solve([inout], [Path]).
+
+% Solution Generator for Hamiltonian Paths with given Start and End vertices.
+hamiltonian_path_gen(Graph, Start, End, Path) =>
+    hamiltonian_path(Graph, Start, End, Path),
+    solve([inout], [Path]).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Test Runner
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+test_hamiltonian =>
+    G34 = grid_graph(3, 4),
+    G35 = grid_graph(3, 5),
+    G62 = grid_graph(6, 2),
+    % Number of (undirected) Hamiltonian Paths in the MxN Grid Graph
+    % https://oeis.org/A332307
+    assert_equal(
+        count_all(hamiltonian_path_gen(G34, _)),
+        62,
+    ),
+    assert_equal(
+        count_all(hamiltonian_path_gen(G35, _)),
+        132,
+    ),
+    assert_equal(
+        count_all(hamiltonian_path_gen(G62, _)),
+        32,
+    ),
+    % In 3xN grid graph, there are 2**(N-2) HamPaths from top left to bottom right.
+    assert_equal(
+        count_all(hamiltonian_path_gen(G34, 1, 12, _)),
+        2**(4-2),
+    ),
+    assert_equal(
+        count_all(hamiltonian_path_gen(G35, 1, 15, _)),
+        2**(5-2),
+    ),
+    nl.
