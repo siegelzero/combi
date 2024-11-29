@@ -754,7 +754,7 @@ assert_equal(A, B) =>
     if A == B then
         println(A == B),
     else
-        throw $error(test_failed, A != B),
+        handle_exception($test_failed, A != B),
     end.
 
 test_combi =>

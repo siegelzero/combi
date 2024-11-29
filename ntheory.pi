@@ -2,6 +2,187 @@ module ntheory.
 
 import combi.
 
+main =>
+    modular_inverse(5, 191, X),
+    println(X).
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% GCDs and LCMs
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Returns the greatest common divisor of the values in the list.
+gcd([A]) = A.
+gcd([A|As]) = gcd(A, gcd(As)).
+
+
+test_gcd =>
+    println("Testing gcd"),
+    assert_equal(gcd([10, 20, 30]), 10),
+    assert_equal(gcd(4..4..16), 4),
+    nl.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Returns the least common multiple of integers A and B.
+lcm(A, B) = abs(A*B) // gcd(A, B).
+
+% Returns the least common multiple of the values in the list.
+lcm([A]) = A.
+lcm([A|As]) = lcm(A, lcm(As)).
+
+
+test_lcm =>
+    println("Testing lcm"),
+    assert_equal(lcm(50, 30), 150),
+    assert_equal(lcm(-5, 7), 35),
+    assert_equal(lcm([10, 20, 30]), 60),
+    assert_equal(lcm(1..10), 2520),
+    nl.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Returns the extended gcd D of integers A and B.
+% Given integers A and B, finds X, Y, D with A*X + B*Y = D = gcd(A, B).
+
+egcd(A, B, X, Y, D), A == 0 =>
+    X = 0, Y = 1, D = B.
+
+egcd(A, B, X, Y, D), B == 0 =>
+    X = 1, Y = 0, D = A.
+
+egcd(A, B, X, Y, D), A < 0 =>
+    egcd(abs(A), B, XX, Y, D),
+    X = -XX.
+
+egcd(A, B, X, Y, D), B < 0 =>
+    egcd(A, abs(B), X, YY, D),
+    Y = -YY.
+
+egcd(A, B, X, Y, D) =>
+    R = A mod B,
+    egcd(B, R, XX, YY, D),
+    X = YY,
+    Y = XX - YY*(A div B).
+
+
+test_egcd =>
+    println("Testing extended gcd"),
+    egcd(10, 12, X1, Y1, D1),
+    assert_equal([X1, Y1, D1], [-1, 1, 2]),
+
+    egcd(-120, 42, X2, Y2, D2),
+    assert_equal([X2, Y2, D2], [1, 3, 6]),
+
+    egcd(-19, -31, X3, Y3, D3),
+    assert_equal([X3, Y3, D3], [13, -8, 1]),
+    nl.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Returns solution to the linear diophantine equation A*X + B*Y = C
+% Given integers A, B, C, finds integers X, Y satisfing the equation.
+
+% diophantine(A, B, C, X, Y) holds with A*X + B*Y == C.
+diophantine(A, B, C, X, Y) => diophantine(A, B, C, X, Y, _).
+
+
+% diophantine(A, B, C, X, Y, D) holds with A*X + B*Y == C and D = gcd(A, B).
+diophantine(A, B, C, X, Y, D) =>
+    % Find particular solution X0, Y0
+    diophantine_particular(A, B, C, X0, Y0, D),
+    % Visit all solutions X = X0 + K*(B/D) and Y = Y0 - K*(A/D).
+    visit(A div D, B div D, X0, Y0, X, Y, 0).
+
+
+% diophantine_minimal(A, B, C, X, Y) finds X, Y satisfying A*X + B*Y == C
+% with minimal X > 0.
+diophantine_minimal(A, B, C, X, Y) =>
+    diophantine(A, B, C, X, Y, D),
+    X < abs(B) div D,
+    X > 0.
+
+
+private
+% Finds particular solution of the linear diophantine equation
+diophantine_particular(A, B, C, X, Y, D) =>
+    egcd(A, B, XX, YY, D),
+    % Solution iff D divides C, where D = gcd(A, B).
+    if C mod D != 0 then
+        handle_exception($no_solutions(A, B, C, X, Y, D), diophantine_particular),
+    end,
+    % Find particular solution
+    X = XX*C div D,
+    Y = YY*C div D.
+
+
+private
+visit(A, B, X0, Y0, X, Y) ?=>
+    % For K = 0 just visit the one solution.
+    X = X0, Y = Y0.
+
+visit(A, B, X0, Y0, X, Y) =>
+    % Otherwise start at K=1.
+    visit(A, B, X0, Y0, X, Y, 1).
+
+private
+visit(A, B, X0, Y0, X, Y, K) ?=>
+    % For K > 0 visit solution for both +K and -K.
+    both(A, B, X0, Y0, X, Y, K).
+
+visit(A, B, X0, Y0, X, Y, K) =>
+    % Otherwise increase K and continue visiting.
+    visit(A, B, X0, Y0, X, Y, K + 1).
+
+% Visit solutions for both signs of K.
+private
+both(A, B, X0, Y0, X, Y, K) ?=>
+    X = X0 + K*B,
+    Y = Y0 - K*A.
+
+both(A, B, X0, Y0, X, Y, K) =>
+    X = X0 - K*B,
+    Y = Y0 + K*A.
+
+
+test_diophantine =>
+    println("Testing diophantine"),
+
+    diophantine(172, 20, 1000, X1, Y1),
+    assert_equal([X1, Y1], [500, -4250]),
+
+    diophantine(158, -57, 7, X2, Y2),
+    X2 > 100,
+    assert_equal([X2, Y2], [131, 363]),
+
+    diophantine_minimal(63*2, -23*2, -11*2, X3, Y3),
+    assert_equal([X3, Y3], [21, 58]),
+    nl.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% True if X is the modular inverse of A (mod M).
+% Finds 0 < X < M such that A*X = 1 (mod M).
+modular_inverse(A, M, X) =>
+    egcd(A, M, XX, _, D),
+    if D > 1 then
+        handle_exception($coprime_values_expected(A, M, X), modular_inverse),
+    else
+        X = XX mod M.
+
+
+test_modular_inverse =>
+    modular_inverse(7, 31, X1),
+    assert_equal(X1, 9),
+
+    modular_inverse(9, 31, X2),
+    assert_equal(X2, 7),
+
+    modular_inverse(-2, 17, X3),
+    assert_equal(X3, 8),
+    nl.
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Primes
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -51,4 +232,9 @@ test_primes =>
 
 
 test_ntheory =>
+    test_diophantine,
+    test_egcd,
+    test_gcd,
+    test_lcm,
+    test_modular_inverse,
     test_primes.
